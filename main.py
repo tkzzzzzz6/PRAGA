@@ -36,8 +36,6 @@ def main(args):
     random_seed = 2024
     fix_seed(random_seed)
 
-
-
     # Preprocess
     if args.data_type == '10x':
         # RNA
@@ -104,7 +102,6 @@ def main(args):
     data = construct_neighbor_graph(adata_omics1, adata_omics2, datatype=args.data_type, Arg=args)
 
     # define model
-
     model = Train(data, datatype=args.data_type, device=device, Arg=args)
 
     start_time = time.time()
@@ -123,7 +120,6 @@ def main(args):
     adata.obsm['PRAGA'] = output['PRAGA'].copy()
 
     # Clustering
-
     tool = 'mclust' # mclust, leiden, and louvain
     clustering(adata, key='PRAGA', add_key='PRAGA', n_clusters=args.n_clusters, method=tool, use_pca=True)
 
