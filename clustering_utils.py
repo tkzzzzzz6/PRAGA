@@ -9,10 +9,16 @@ from sklearn.mixture import GaussianMixture
 import torch
 from tqdm import tqdm
 
-
+'''
+---------------------
+Part of functions
+author: Meitar Ronen https://github.com/BGU-CS-VIL/DeepDPM/tree/main
+MIT license
+---------------------
+'''
 
 def pairwise_distance(data1, data2, batch_size=None):
-    r'''
+    '''
     using broadcast mechanism to calculate pairwise ecludian distance of data
     the input data is N*M matrix, where M is the dimension
     we first expand the N*M matrix into N*1*M matrix A and 1*N*M matrix B
@@ -318,7 +324,7 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
     for k in range(len(centroids)):
         feat_k = u_feat[labels == k]
         # print(counts, data_covs.shape)
-        cov_k = prior.compute_post_cov(counts[k], feat_k.mean(axis=0), data_covs[k])  # len(codes_k) == counts[k]? yes
+        cov_k = prior.compute_post_cov(counts[k], feat_k.mean(axis=0), data_covs[k])  
         covs.append(cov_k)
     covs = torch.stack(covs)    # 5,64,64
 
@@ -414,9 +420,6 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
             mu_subs_1 = sub_center[class_label][1]
             new_centroids[class_label] = mu_subs_0
             new_centroids = torch.cat((new_centroids, mu_subs_1.unsqueeze(0)), dim=0)
-
-    # print('new centroids:', new_centroids.shape)
-    # assert 0
 
 
     # perform merge
