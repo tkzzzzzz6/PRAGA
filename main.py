@@ -1,7 +1,5 @@
 import os
-# 设置 OpenMP 线程数
 os.environ["OMP_NUM_THREADS"] = "1"
-# 设置 MKL 线程数
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
@@ -133,12 +131,9 @@ def main(args):
 
     list = spatial_glue_df.tolist()
 
-    # 指定输出文件路径和文件名
+    # Save results
     output_file = args.txt_out_path
-
-    # 打开文件进行写入，使用 'w' 模式
     with open(output_file, 'w') as f:
-        # 遍历列表中的每个整数元素，逐行写入文件
         for num in list:
             f.write(f"{num}\n")
 
