@@ -43,7 +43,6 @@ class R5(nn.Module):
                 print('updating clustring...')
                 self.begin = True
                 self.centroids = split_and_merge_op(feat, self.arg).to(self.device)
-                # self.centroids = self.generate_centroids(centroids.detach())
                 dist = pairwise_distance(feat, self.centroids)
                 value, pred = torch.min(dist, dim=1)
             else:
@@ -58,7 +57,6 @@ class R5(nn.Module):
     def get_pred(self, x, class_num):
         gmm = GaussianMixture(n_components=class_num, random_state=0)
         gmm.fit(x)
-
         labels = gmm.predict(x)
         return labels
 
@@ -75,8 +73,6 @@ class R5(nn.Module):
                 neg = torch.div(
                     torch.matmul(feat, center.unsqueeze(0).T),
                     self.tau)
-
-                # print(weight.shape)
 
                 pos = torch.mean(torch.exp(pos.squeeze()))
                 neg = torch.mean(torch.exp(neg.squeeze()))
