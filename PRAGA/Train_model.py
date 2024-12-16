@@ -116,8 +116,6 @@ class Train:
 
                 loss = self.weight_factors[0]*self.loss_recon_omics1 + self.weight_factors[1]*self.loss_recon_omics2
 
-                ##-------------------------------------> cal graph loss begin<---------------------------------------------------
-
                 updated_adj_omics1 = self.paramed_adj_omics1()
                 updated_adj_omics2 = self.paramed_adj_omics2()
 
@@ -154,13 +152,11 @@ class Train:
 
         end_time = time.time()
         print("Infer time: ", end_time - start_time)
-        # assert 0
- 
+
         emb_omics1 = F.normalize(results['emb_latent_omics1'], p=2, eps=1e-12, dim=1)  
         emb_omics2 = F.normalize(results['emb_latent_omics2'], p=2, eps=1e-12, dim=1)
         emb_combined = F.normalize(results['emb_latent_combined'], p=2, eps=1e-12, dim=1)
 
-        # 去除对角元素
         A_no_diag = self.paramed_adj_omics2().cpu().detach().clone()
         A_no_diag.fill_diagonal_(0)
         
