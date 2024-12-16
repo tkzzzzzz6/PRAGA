@@ -59,7 +59,7 @@ class Encoder_overall(Module):
 
 '''
 ---------------------
-Encoder & Decoder fucntions
+Encoder & Decoder functions
 author: Yahui Long https://github.com/JinmiaoChenLab/SpatialGlue
 AGPL-3.0 LICENSE
 ---------------------
