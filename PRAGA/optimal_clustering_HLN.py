@@ -37,9 +37,6 @@ class R5(nn.Module):
             self.arg = Arg(init_K=5)
 
     def forward(self, feat, epoch):
-        # self.centroids = self.generate_centroids()
-
-        # feat = F.normalize(feat, p=2, eps=1e-12, dim=1)
 
         if epoch>99:
             if (self.begin == False) or (epoch % 50 == 0):
@@ -62,13 +59,11 @@ class R5(nn.Module):
         gmm = GaussianMixture(n_components=class_num, random_state=0)
         gmm.fit(x)
 
-        # 获取每个样本的聚类分配
         labels = gmm.predict(x)
         return labels
 
     def CL(self, feat, pred, centers):
         loss = 0
-        # cosine_sim = F.cosine_similarity(feat.unsqueeze(1), class_centers.unsqueeze(0), dim=2)  # 形状为 (N, K)
         for label, center in enumerate(centers):
             center = center.float()
             feat = feat.float()
