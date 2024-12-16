@@ -379,7 +379,7 @@ def purity(result, label):
         for j in original_counter:
             count = 0
             for i in range(len(result)):
-                if result[i] == k and label[i] == j: # 求交集
+                if result[i] == k and label[i] == j: 
                     count += 1
             p_k.append(count)
         temp_t = max(p_k)
