@@ -82,240 +82,6 @@ def cluster_acc(y_true, y_pred, return_ind=False):
     else:
         return sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
-# class K_Means:
-#
-#     def __init__(self, k=3, tolerance=1e-4, max_iterations=100, init='k-means++',
-#                  n_init=10, random_state=None, n_jobs=None, pairwise_batch_size=None, mode=None):
-#         self.k = k
-#         self.tolerance = tolerance
-#         self.max_iterations = max_iterations
-#         self.init = init
-#         self.n_init = n_init
-#         self.random_state = random_state
-#         self.n_jobs = n_jobs
-#         self.pairwise_batch_size = pairwise_batch_size
-#         self.mode = mode
-#
-#     def split_for_val(self, l_feats, l_targets, val_prop=0.2):
-#
-#         np.random.seed(0)
-#
-#         # Reserve some labelled examples for validation
-#         num_val_instances = int(val_prop * len(l_targets))
-#         val_idxs = np.random.choice(range(len(l_targets)), size=(num_val_instances), replace=False)
-#         val_idxs.sort()
-#         remaining_idxs = list(set(range(len(l_targets))) - set(val_idxs.tolist()))
-#         remaining_idxs.sort()
-#         remaining_idxs = np.array(remaining_idxs)
-#
-#         val_l_targets = l_targets[val_idxs]
-#         val_l_feats = l_feats[val_idxs]
-#
-#         remaining_l_targets = l_targets[remaining_idxs]
-#         remaining_l_feats = l_feats[remaining_idxs]
-#
-#         return remaining_l_feats, remaining_l_targets, val_l_feats, val_l_targets
-#
-#
-#     def kpp(self, X, pre_centers=None, k=10, random_state=None):
-#         random_state = check_random_state(random_state)
-#
-#         if pre_centers is not None:
-#
-#             C = pre_centers
-#
-#         else:
-#
-#             C = X[random_state.randint(0, len(X))]
-#
-#         C = C.view(-1, X.shape[1])
-#
-#         while C.shape[0] < k:
-#
-#             dist = pairwise_distance(X, C, self.pairwise_batch_size)
-#             dist = dist.view(-1, C.shape[0])
-#             d2, _ = torch.min(dist, dim=1)
-#             prob = d2/d2.sum()
-#             cum_prob = torch.cumsum(prob, dim=0)
-#             r = random_state.rand()
-#
-#             if len((cum_prob >= r).nonzero()) == 0:
-#                 debug = 0
-#             else:
-#                 ind = (cum_prob >= r).nonzero()[0][0]
-#             C = torch.cat((C, X[ind].view(1, -1)), dim=0)
-#
-#         return C
-#
-#
-#     def fit_once(self, X, random_state):
-#
-#         X = X.cuda()
-#
-#         centers = torch.zeros(self.k, X.shape[1]).type_as(X).cuda()
-#         labels = -torch.ones(len(X))
-#         #initialize the centers, the first 'k' elements in the dataset will be our initial centers
-#
-#         if self.init == 'k-means++':
-#             centers = self.kpp(X, k=self.k, random_state=random_state)
-#
-#         elif self.init == 'random':
-#
-#             random_state = check_random_state(self.random_state)
-#             idx = random_state.choice(len(X), self.k, replace=False)
-#             for i in range(self.k):
-#                 centers[i] = X[idx[i]]
-#
-#         else:
-#             for i in range(self.k):
-#                 centers[i] = X[i]
-#
-#         #begin iterations
-#
-#         best_labels, best_inertia, best_centers = None, None, None
-#         for i in range(self.max_iterations):
-#
-#             centers_old = centers.clone()
-#             dist = pairwise_distance(X, centers, self.pairwise_batch_size)
-#             mindist, labels = torch.min(dist, dim=1)
-#             inertia = mindist.sum()
-#
-#
-#
-#             for idx in range(self.k):
-#                 selected = torch.nonzero(labels == idx).squeeze().cuda()
-#                 selected = torch.index_select(X, 0, selected)
-#                 centers[idx] = selected.mean(dim=0)
-#
-#             if best_inertia is None or inertia < best_inertia:
-#                 best_labels = labels.clone()
-#                 best_centers = centers.clone()
-#                 best_inertia = inertia
-#
-#             center_shift = torch.sum(torch.sqrt(torch.sum((centers - centers_old) ** 2, dim=1)))
-#             if center_shift ** 2 < self.tolerance:
-#                 #break out of the main loop if the results are optimal, ie. the centers don't change their positions much(more than our tolerance)
-#                 break
-#
-#         return best_labels, best_inertia, best_centers, i + 1
-#
-#
-#     def fit_mix_once(self, u_feats, l_feats, l_targets, random_state):
-#
-#         def supp_idxs(c):
-#             return l_targets.eq(c).nonzero().squeeze(1)
-#
-#         l_classes = torch.unique(l_targets)
-#         support_idxs = list(map(supp_idxs, l_classes))
-#         l_centers = torch.stack([l_feats[idx_list].mean(0) for idx_list in support_idxs])
-#         cat_feats = torch.cat((l_feats, u_feats))
-#
-#         centers = torch.zeros([self.k, cat_feats.shape[1]]).type_as(cat_feats)
-#         centers[:len(l_classes)] = l_centers
-#
-#         labels = -torch.ones(len(cat_feats)).type_as(cat_feats).long()
-#
-#         l_classes = l_classes.cpu().long().numpy()
-#         l_targets = l_targets.cpu().long().numpy()
-#         l_num = len(l_targets)
-#         cid2ncid = {cid:ncid for ncid, cid in enumerate(l_classes)}  # Create the mapping table for New cid (ncid)
-#         for i in range(l_num):
-#             labels[i] = cid2ncid[l_targets[i]]
-#
-#         #initialize the centers, the first 'k' elements in the dataset will be our initial centers
-#         centers = self.kpp(u_feats, l_centers, k=self.k, random_state=random_state)
-#
-#         # Begin iterations
-#         best_labels, best_inertia, best_centers = None, None, None
-#         for it in range(self.max_iterations):
-#             centers_old = centers.clone()
-#
-#             dist = pairwise_distance(u_feats, centers, self.pairwise_batch_size)
-#             u_mindist, u_labels = torch.min(dist, dim=1)
-#             u_inertia = u_mindist.sum()
-#             l_mindist = torch.sum((l_feats - centers[labels[:l_num]])**2, dim=1)
-#             l_inertia = l_mindist.sum()
-#             inertia = u_inertia + l_inertia
-#             labels[l_num:] = u_labels
-#
-#             for idx in range(self.k):
-#
-#                 selected = torch.nonzero(labels == idx).squeeze()
-#                 selected = torch.index_select(cat_feats, 0, selected)
-#                 centers[idx] = selected.mean(dim=0)
-#
-#             if best_inertia is None or inertia < best_inertia:
-#                 best_labels = labels.clone()
-#                 best_centers = centers.clone()
-#                 best_inertia = inertia
-#
-#             center_shift = torch.sum(torch.sqrt(torch.sum((centers - centers_old) ** 2, dim=1)))
-#
-#             if center_shift ** 2 < self.tolerance:
-#                 #break out of the main loop if the results are optimal, ie. the centers don't change their positions much(more than our tolerance)
-#                 break
-#
-#         return best_labels, best_inertia, best_centers, i + 1
-#
-#
-#     def fit(self, X):
-#         random_state = check_random_state(self.random_state)
-#         best_inertia = None
-#         if effective_n_jobs(self.n_jobs) == 1:
-#             for it in range(self.n_init):
-#                 labels, inertia, centers, n_iters = self.fit_once(X, random_state)
-#                 if best_inertia is None or inertia < best_inertia:
-#                     self.labels_ = labels.clone()
-#                     self.cluster_centers_ = centers.clone()
-#                     best_inertia = inertia
-#                     self.inertia_ = inertia
-#                     self.n_iter_ = n_iters
-#         else:
-#             # parallelisation of k-means runs
-#             seeds = random_state.randint(np.iinfo(np.int32).max, size=self.n_init)
-#             results = Parallel(n_jobs=self.n_jobs, verbose=0)(delayed(self.fit_once)(X, seed) for seed in seeds)
-#             # Get results with the lowest inertia
-#             labels, inertia, centers, n_iters = zip(*results)
-#             best = np.argmin(inertia)
-#             self.labels_ = labels[best]
-#             self.inertia_ = inertia[best]
-#             self.cluster_centers_ = centers[best]
-#             self.n_iter_ = n_iters[best]
-#
-#
-#     def fit_mix(self, u_feats, l_feats, l_targets):
-#
-#         random_state = check_random_state(self.random_state)
-#         best_inertia = None
-#         fit_func = self.fit_mix_once
-#
-#         if effective_n_jobs(self.n_jobs) == 1:
-#             for it in range(self.n_init):
-#
-#                 labels, inertia, centers, n_iters = fit_func(u_feats, l_feats, l_targets, random_state)
-#
-#                 if best_inertia is None or inertia < best_inertia:
-#                     self.labels_ = labels.clone()
-#                     self.cluster_centers_ = centers.clone()
-#                     best_inertia = inertia
-#                     self.inertia_ = inertia
-#                     self.n_iter_ = n_iters
-#
-#         else:
-#
-#             # parallelisation of k-means runs
-#             seeds = random_state.randint(np.iinfo(np.int32).max, size=self.n_init)
-#             results = Parallel(n_jobs=self.n_jobs, verbose=0)(delayed(fit_func)(u_feats, l_feats, l_targets, seed)
-#                                                               for seed in seeds)
-#             # Get results with the lowest inertia
-#
-#             labels, inertia, centers, n_iters = zip(*results)
-#             best = np.argmin(inertia)
-#             self.labels_ = labels[best]
-#             self.inertia_ = inertia[best]
-#             self.cluster_centers_ = centers[best]
-#             self.n_iter_ = n_iters[best]
-
 
 def get_sub_assign_with_one_cluster(feat, labels, k, prior):
     counts = []
@@ -335,18 +101,11 @@ def get_sub_assign_with_one_cluster(feat, labels, k, prior):
 
         mu_subs = gmm.means_
 
-        # 获取每个样本的聚类分配
         class_sub_assign = gmm.predict(class_sub_feat)
 
         class_sub_assign = torch.tensor(class_sub_assign)
         mu_subs = torch.tensor(mu_subs)
 
-        # km = K_Means(k=2, init='k-means++', random_state=1, n_jobs=None, pairwise_batch_size=None)
-        # km.fit(class_sub_feat)
-        # class_sub_assign = km.labels_.cpu()
-        # print(class_sub_assign.shape)
-        # assert 0
-        # mu_subs = km.cluster_centers_
         _, c = torch.unique(class_sub_assign, return_counts=True)
     counts.extend(c.cpu().numpy().tolist())
 
@@ -371,23 +130,17 @@ def get_sub_cluster_with_sskmeans(u_feat, labels, prior, args, ):
     cov_sub_list = []
     pi_sub_list = []
     class_sub_assign_list = []
-    # only the unlabelled data will be splited or merged
-    # l_labels = labels[:len(l_targets)].unique().cpu()
-    # all_labels = labels[len(l_targets):].unique().cpu()
 
     for class_label in tqdm(labels.cpu().numpy().tolist()):
         mu_sub, cov_sub, pi_sub, class_sub_assign = get_sub_assign_with_one_cluster(u_feat, labels,
                                                                                     class_label, prior)
-        # print(mu_sub.shape)
-        # print(cov_sub.shape)
-        # print(pi_sub.shape)
+
         sub_clusters.append([class_label, (mu_sub, cov_sub, pi_sub, class_sub_assign)])
         mu_sub_list.append(mu_sub)
         cov_sub_list.append(cov_sub)
         pi_sub_list.append(pi_sub)
         class_sub_assign_list.append(class_sub_assign)
-        # print(class_sub_assign.shape)
-        # assert 0
+
     return sub_clusters, mu_sub_list, cov_sub_list, pi_sub_list, class_sub_assign_list
 
 
@@ -401,18 +154,13 @@ def split_rule(class_feat, mus, feat_sub_0, feat_sub_1, mu_sub_0, mu_sub_1, num_
     mu_subs: 2xD, sub cluster centers
     return [k, bool], split the k-th cluster or not
     """
-    # if len(feats) <= 5:
-    #     # small clusters will not be splited
-    #     return False
-    #
-    # if len(feats[sub_assignment == 0]) <= 5 or len(feats[sub_assignment == 1]) <= 5:
-    #     return False
 
-    log_ll_k = prior.log_marginal_likelihood(class_feat, mus)  ## k类内的 Nk 个 feats 和 mu
-    log_ll_k1 = prior.log_marginal_likelihood(feat_sub_0, mu_sub_0) ## k类内的第一个子类的 Nk_1 个 feats 和 mu
-    log_ll_k2 = prior.log_marginal_likelihood(feat_sub_1, mu_sub_1) ## k类内的第一个子类的 Nk_2 个 feats 和 mu
-    N_k_1 = num_sub_0  ## 第一个子类的数量
-    N_k_2 = num_sub_1  ## 第二个子类的数量
+
+    log_ll_k = prior.log_marginal_likelihood(class_feat, mus)  
+    log_ll_k1 = prior.log_marginal_likelihood(feat_sub_0, mu_sub_0) 
+    log_ll_k2 = prior.log_marginal_likelihood(feat_sub_1, mu_sub_1) 
+    N_k_1 = num_sub_0  
+    N_k_2 = num_sub_1  
 
     return log_Hastings_ratio_split(1.0, torch.tensor(N_k_1), torch.tensor(N_k_2), log_ll_k1, log_ll_k2, log_ll_k, split_prob=0.1)
 
@@ -482,7 +230,7 @@ def log_Hastings_ratio_split(
         H = torch.zeros(1)
         split_prob = 0
 
-    # if Hastings ratio > 1 (or 0 in log space) perform split, if not, toss a coin
+    # if Hastings ratio > 1 (or 0 in log space) perform split
     return bool(H > 0)
 
 def log_Hastings_ratio_merge(
@@ -520,13 +268,11 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
 
     u_feat = u_feat.cpu().detach().numpy()
 
-    # 执行高斯混合模型聚类分析
     gmm = GaussianMixture(n_components=class_num, random_state=0)
     gmm.fit(u_feat)
 
     centroids = gmm.means_
 
-    # 获取每个样本的聚类分配
     labels = gmm.predict(u_feat)
 
     pred = labels
@@ -541,21 +287,16 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
     _, counts = torch.unique(labels, return_counts=True)
     counts = counts.cpu()
 
-    # 所有可能的类的序号范围
     all_classes = torch.arange(class_num)
 
-    # 创建一个布尔掩码来标记哪些类的序号未在 index 中出现
     mask = torch.ones(all_classes.size(0), dtype=torch.bool)
     mask[_] = False
 
-    # 找出缺失的类
     missing_indices = all_classes[mask]
 
-    # 将缺失的类的序号和相应的0样本数量补入
     new_index = torch.cat((_, missing_indices))
     new_value = torch.cat((counts, torch.zeros(missing_indices.size(0), dtype=counts.dtype)))
 
-    # 根据index排序
     sorted_indices = torch.argsort(new_index)
     _ = new_index[sorted_indices]
     counts = new_value[sorted_indices]
@@ -620,23 +361,8 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
         sub_center[_label].append(mu_sub_0)
         sub_center[_label].append(mu_sub_1)
 
-        # print(mus.shape)
-
         split_decision = split_rule(class_feat, mus[_label], feat_sub_0, feat_sub_1, mu_sub_0, mu_sub_1, num_sub_0, num_sub_1, prior)
         split_decisions.append([_label.item(), split_decision])
-
-
-
-    # for class_label, items in tqdm(sub_clusters):
-    #     # if class_label in labelled_clusters:
-    #     #     # NOTE: labelled clusters are not considered
-    #     #     continue
-    #     class_indices = labels == class_label
-    #     print(class_indices)
-    #     assert 0
-    #     mu_subs, cov_subs, pi_subs, sub_assign = items
-    #     split_decision = split_rule(u_feat[class_indices], sub_assign, prior, mus[class_label], mu_subs)
-    #     split_decisions.append([class_label, split_decision])
 
     print(split_decisions)
 
@@ -645,7 +371,6 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
     remain_covs = covs[remain_for_merge]
     remain_pi = pi[remain_for_merge]
 
-    # import ipdb; ipdb.set_trace()
     merge_decisions = []
 
     mu_nn = NearestNeighbors(n_neighbors=2, metric='euclidean').fit(remain_mus.cpu().detach().numpy())
@@ -706,43 +431,16 @@ def split_and_merge_op(u_feat, args, index=0, stage=0):
     centroids = new_centroids
     print('after merge', centroids.shape)
 
-    # 创建一个布尔掩码来选择要保留的向量
     indices_to_delete = list(set(indices_to_delete))
     mask = torch.ones(centroids.size(0), dtype=torch.bool)
     mask[indices_to_delete] = False
 
-    # 使用布尔掩码来选择要保留的向量
     centroids = centroids[mask]
 
     print('after delete', centroids.shape)
-    # assert 0
 
     dist = pairwise_distance(u_feat.cpu(), centroids.cpu())
-    # print(dist.shape)
-    # assert 0
     _, pred = torch.min(dist, dim=1)
-
-    # pred[:len(l_targets)] = l_targets
-
-    # # update densities
-    # dist2center = torch.sum((u_feat.cpu() - centroids[pred].cpu()) ** 2, dim=1).sqrt()
-    #
-    # density = torch.zeros(len(centroids))
-    # for center_id in pred.unique():
-    #     if (pred == center_id).nonzero().shape[0] > 1:
-    #         item = dist2center[pred == center_id]
-    #         density[center_id.item()] = item.mean() / np.log(len(item) + 10)
-    #
-    # dmax = density.max()
-    # for center_id in pred.unique():
-    #     if (pred == center_id).nonzero().shape[0] <= 1:
-    #         density[center_id.item()] = dmax
-    #
-    # density = density.cpu().detach().numpy()
-    #
-    # density = density.clip(np.percentile(density, 10), np.percentile(density, 90))  # clamp extreme values for stability
-    # density = args.temperature * density / density.mean()  # scale the mean to temperature
-    # density = torch.from_numpy(density).cuda()
 
     centroids = F.normalize(centroids, p=2, dim=1).cuda()
 
