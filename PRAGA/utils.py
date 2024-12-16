@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 '''
 ---------------------
-author: Yahui Long
+author: Yahui Long https://github.com/JinmiaoChenLab/SpatialGlue
 e-mail: chen_jinmiao@bii.a-star.edu.sg
 AGPL-3.0 LICENSE
 ---------------------
