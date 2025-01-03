@@ -37,7 +37,8 @@ Install  packages:
 pip install -r requirements.txt
 ```
 
-For Human Lymph Node dataset (Long et al. 2024) and spatial epigenome–transcriptome mouse
+For Human Lymph Node dataset (Long et al. 2024), Spatial multi-modal
+omics simulation datasets (Long et al. 2024) and spatial epigenome–transcriptome mouse
 brain dataset (Zhang et al. 2023), you can directly execute the shell script commands:
 ```cmd
 sh run.sh
