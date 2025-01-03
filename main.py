@@ -29,12 +29,9 @@ def main(args):
         adata_omics1 = sc.read_h5ad(args.file_fold + 'adata_RNA.h5ad')
         adata_omics2 = sc.read_h5ad(args.file_fold + 'adata_peaks_normalized.h5ad')
     elif args.data_type == 'Simulation':
-        file_fold = '/mnt/sdb/home/xlhuang/spatialglue/SpatialGlue/data/Simulation/'
-
-        adata_omics1 = sc.read_h5ad(file_fold + 'adata_RNA.h5ad')
-        adata_omics2 = sc.read_h5ad(file_fold + 'adata_ADT.h5ad')
-        adata_omics3 = sc.read_h5ad(file_fold + 'adata_ATAC.h5ad')
-
+        adata_omics1 = sc.read_h5ad(args.file_fold + 'adata_RNA.h5ad')
+        adata_omics2 = sc.read_h5ad(args.file_fold + 'adata_ADT.h5ad')
+        adata_omics3 = sc.read_h5ad(args.file_fold + 'adata_ATAC.h5ad')
 
     adata_omics1.var_names_make_unique()
     adata_omics2.var_names_make_unique()
