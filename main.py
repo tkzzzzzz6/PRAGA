@@ -12,8 +12,9 @@ import argparse
 import time
 from PRAGA.preprocess import fix_seed
 from PRAGA.preprocess import clr_normalize_each_cell, pca
-from PRAGA.preprocess import construct_neighbor_graph
+from PRAGA.preprocess import construct_neighbor_graph, lsi
 from PRAGA.Train_model import Train
+from PRAGA.Train_model_3M import Train_3M
 from PRAGA.utils import clustering
 
 def main(args):
@@ -24,14 +25,23 @@ def main(args):
     if args.data_type in ['10x', 'SPOTS', 'Stereo-CITE-seq']:
         adata_omics1 = sc.read_h5ad(args.file_fold + 'adata_RNA.h5ad')
         adata_omics2 = sc.read_h5ad(args.file_fold + 'adata_ADT.h5ad')
-    else:
+    elif args.data_type == 'Spatial-epigenome-transcriptome':
         adata_omics1 = sc.read_h5ad(args.file_fold + 'adata_RNA.h5ad')
         adata_omics2 = sc.read_h5ad(args.file_fold + 'adata_peaks_normalized.h5ad')
+    elif args.data_type == 'Simulation':
+        file_fold = '/mnt/sdb/home/xlhuang/spatialglue/SpatialGlue/data/Simulation/'
+
+        adata_omics1 = sc.read_h5ad(file_fold + 'adata_RNA.h5ad')
+        adata_omics2 = sc.read_h5ad(file_fold + 'adata_ADT.h5ad')
+        adata_omics3 = sc.read_h5ad(file_fold + 'adata_ATAC.h5ad')
+
 
     adata_omics1.var_names_make_unique()
     adata_omics2.var_names_make_unique()
+    if args.data_type == 'Simulation':
+        adata_omics3.var_names_make_unique()
 
-    # Fix random seed
+        # Fix random seed
 
     random_seed = 2024
     fix_seed(random_seed)
@@ -50,6 +60,7 @@ def main(args):
         adata_omics2 = clr_normalize_each_cell(adata_omics2)
         sc.pp.scale(adata_omics2)
         adata_omics2.obsm['feat'] = pca(adata_omics2, n_comps=adata_omics2.n_vars - 1)
+        data = construct_neighbor_graph(adata_omics1, adata_omics2, datatype=args.data_type, Arg=args)
     elif args.data_type == 'Spatial-epigenome-transcriptome':
         # RNA
         sc.pp.filter_genes(adata_omics1, min_cells=10)
@@ -66,8 +77,8 @@ def main(args):
         if 'X_lsi' not in adata_omics2.obsm.keys():
             sc.pp.highly_variable_genes(adata_omics2, flavor="seurat_v3", n_top_genes=3000)
             lsi(adata_omics2, use_highly_variable=False, n_components=51)
-
         adata_omics2.obsm['feat'] = adata_omics2.obsm['X_lsi'].copy()
+        data = construct_neighbor_graph(adata_omics1, adata_omics2, datatype=args.data_type, Arg=args)
     elif args.data_type == 'SPOTS':
         # RNA
         sc.pp.filter_genes(adata_omics1, min_cells=10)
@@ -81,6 +92,7 @@ def main(args):
         adata_omics2 = clr_normalize_each_cell(adata_omics2)
         sc.pp.scale(adata_omics2)
         adata_omics2.obsm['feat'] = pca(adata_omics2, n_comps=adata_omics2.n_vars - 1)
+        data = construct_neighbor_graph(adata_omics1, adata_omics2, datatype=args.data_type, Arg=args)
     elif args.data_type == 'Stereo-CITE-seq':
         # RNA
         sc.pp.filter_genes(adata_omics1, min_cells=10)
@@ -95,14 +107,32 @@ def main(args):
         # Protein
         adata_omics2 = clr_normalize_each_cell(adata_omics2)
         adata_omics2.obsm['feat'] = pca(adata_omics2, n_comps=adata_omics2.n_vars - 1)
+        data = construct_neighbor_graph(adata_omics1, adata_omics2, datatype=args.data_type, Arg=args)
+    elif args.data_type == 'Simulation':
+        n_protein = adata_omics2.n_vars
+        sc.pp.highly_variable_genes(adata_omics1, flavor="seurat_v3", n_top_genes=3000)
+        sc.pp.normalize_total(adata_omics1, target_sum=1e4)
+        sc.pp.log1p(adata_omics1)
+        adata_omics1_high = adata_omics1[:, adata_omics1.var['highly_variable']]
+        adata_omics1.obsm['feat'] = pca(adata_omics1_high, n_comps=n_protein)
+        # Protein
+        adata_omics2 = clr_normalize_each_cell(adata_omics2)
+        adata_omics2.obsm['feat'] = pca(adata_omics2, n_comps=n_protein)
+        # ATAC
+        sc.pp.highly_variable_genes(adata_omics3, flavor="seurat_v3", n_top_genes=3000)
+        lsi(adata_omics3, use_highly_variable=False, n_components=n_protein + 1)
+        adata_omics3.obsm['feat'] = adata_omics3.obsm['X_lsi'].copy()
+
+        from PRAGA.preprocess_3M import construct_neighbor_graph
+        data = construct_neighbor_graph(adata_omics1, adata_omics2, adata_omics3)
     else:
         assert 0
 
-
-    data = construct_neighbor_graph(adata_omics1, adata_omics2, datatype=args.data_type, Arg=args)
-
     # define model
-    model = Train(data, datatype=args.data_type, device=device, Arg=args)
+    if args.data_type == 'Simulation':
+        model = Train_3M(data, datatype=args.data_type, device=device, Arg=args)
+    else:
+        model = Train(data, datatype=args.data_type, device=device, Arg=args)
 
     start_time = time.time()
 
@@ -112,7 +142,7 @@ def main(args):
     end_time = time.time()
 
     print("Training time: ", end_time - start_time)
-    torch.save(model.model.state_dict(), 'model_weights/PRAGA_' + args.data_type + '.pth')
+    # torch.save(model.model.state_dict(), 'model_weights/PRAGA_' + args.data_type + '.pth')
 
     adata = adata_omics1.copy()
     adata.obsm['emb_latent_omics1'] = output['emb_latent_omics1'].copy()
@@ -123,9 +153,18 @@ def main(args):
     tool = 'mclust' # mclust, leiden, and louvain
     clustering(adata, key='PRAGA', add_key='PRAGA', n_clusters=args.n_clusters, method=tool, use_pca=True)
 
-    spatial_glue_df = adata.obs['PRAGA']
+    label = adata.obs['PRAGA']
 
-    list = spatial_glue_df.tolist()
+    if args.data_type == 'Simulation':
+        ids = label.index.astype(str).str[:4]
+        int_list = [int(num_str) for num_str in ids]
+        list = [-1 for i in range(len(int_list))]
+        for i in range(len(int_list)):
+            list[int_list[i]] = label[i]
+        spot_size = 60
+    else:
+        list = label.tolist()
+        spot_size = 20
 
     # Save results
     output_file = args.txt_out_path
@@ -145,11 +184,11 @@ def main(args):
 
     import matplotlib.pyplot as plt
     fig, ax_list = plt.subplots(1, 2, figsize=(7, 3))
-    sc.pp.neighbors(adata, use_rep='PRAGA', n_neighbors=10)
+    sc.pp.neighbors(adata, use_rep='PRAGA', n_neighbors=500)
     sc.tl.umap(adata)
 
-    sc.pl.umap(adata, color='PRAGA', ax=ax_list[0], title='PRAGA', s=20, show=False)
-    sc.pl.embedding(adata, basis='spatial', color='PRAGA', ax=ax_list[1], title='PRAGA', s=25, show=False)
+    sc.pl.umap(adata, color='PRAGA', ax=ax_list[0], title='PRAGA', s=spot_size, show=False)
+    sc.pl.embedding(adata, basis='spatial', color='PRAGA', ax=ax_list[1], title='PRAGA', s=spot_size, show=False)
 
     plt.tight_layout(w_pad=0.3)
     plt.savefig(args.vis_out_path)
@@ -159,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument('--file_fold', type=str,
                         help='Path to data folder')
     parser.add_argument('--data_type', type=str,
-                        choices=['10x', 'Spatial-epigenome-transcriptome', 'SPOTS', 'Stereo-CITE-seq'],
+                        choices=['10x', 'Spatial-epigenome-transcriptome', 'SPOTS', 'Stereo-CITE-seq', 'Simulation'],
                         help='data_type')
     parser.add_argument('--n_clusters', type=int,
                         help='n_clusters for clustering')
