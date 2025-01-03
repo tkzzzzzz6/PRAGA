@@ -10,7 +10,7 @@ python main.py --file_fold './Data/Mouse_Brain/' --data_type 'Spatial-epigenome-
 python cal_matrics.py --GT_path './Data/MB_cluster.txt' --our_path './results/MB.txt' --save_path './results/MB_metrics.txt'
 
 ## Simulation
-python main.py --file_fold '/mnt/sdb/home/xlhuang/spatialglue/SpatialGlue/data/Simulation/' --data_type 'Simulation' --n_clusters 5 --init_k 5 --KNN_k 20 --vis_out_path 'results/Simulation.png' --txt_out_path 'results/Simulation.txt'
+python main.py --file_fold './Data/Simulation/' --data_type 'Simulation' --n_clusters 5 --init_k 5 --KNN_k 20 --vis_out_path 'results/Simulation.png' --txt_out_path 'results/Simulation.txt'
 # eval
 python cal_matrics.py --GT_path 'GT_1.txt' --our_path './results/Simulation.txt' --save_path './results/Simulation_metrics.txt'
 
