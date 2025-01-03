@@ -23,7 +23,7 @@ The above packages are the main packages used for the experiment, most 2.0+ torc
 
 ## Data
 Please download Human Lymph Node dataset (Long et al. 2024) and spatial epigenome–transcriptome mouse
-brain dataset (Zhang et al. 2023) from https://zenodo.org/records/14439975, and unzip them into `./Data/`.
+brain dataset (Zhang et al. 2023) from https://zenodo.org/records/14591305, and unzip them into `./Data/`.
 
 ## Quick start
 
