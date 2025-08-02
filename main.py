@@ -166,7 +166,7 @@ def main(args):
     # Save results
     output_file = args.txt_out_path
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         for num in label_list:
             f.write(f"{num}\n")
 
