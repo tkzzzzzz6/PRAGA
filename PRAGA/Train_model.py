@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim.lr_scheduler as lr_scheduler
 from tqdm import tqdm
-from .model import Encoder_overall
+from .model_ced import Encoder_overall_ced
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import kneighbors_graph
 from .preprocess import adjacent_matrix_preprocessing
@@ -92,7 +92,7 @@ class Train:
     
     def train(self):
 
-        self.model = Encoder_overall(self.dim_input1, self.dim_output1, self.dim_input2, self.dim_output2).to(self.device)
+        self.model = Encoder_overall_ced(self.dim_input1, self.dim_output1, self.dim_input2, self.dim_output2).to(self.device)
         self.optimizer = torch.optim.SGD(list(self.model.parameters()) +
                                           list(self.paramed_adj_omics1.parameters()) +
                                           list(self.paramed_adj_omics2.parameters()),

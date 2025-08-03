@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import kneighbors_graph
-from .model_3M import Encoder_overall
+from .model_ced_3M import Encoder_overall_ced_3M
 from .preprocess_3M import adjacent_matrix_preprocessing
 from .optimal_clustering_HLN import R5 
 
@@ -110,8 +110,8 @@ class Train_3M:
         self.dim_output3 = self.dim_output
 
     def train(self):
-        self.model = Encoder_overall(self.dim_input1, self.dim_output1, self.dim_input2, self.dim_output2,
-                                     self.dim_input3, self.dim_output3).to(self.device)
+        self.model = Encoder_overall_ced_3M(self.dim_input1, self.dim_output1, self.dim_input2, self.dim_output2,
+                                            self.dim_input3, self.dim_output3).to(self.device)
         self.optimizer = torch.optim.SGD(list(self.model.parameters()) +
                                          list(self.paramed_adj_omics1.parameters()) +
                                          list(self.paramed_adj_omics2.parameters()) +
