@@ -7,34 +7,42 @@ from torch.nn.modules.module import Module
 act_layer = nn.ReLU
 ls_init_value = 1e-6
 
-class CED_Graph(nn.Module):
+class CED_Graph_Improved(nn.Module):
     """
-    Ultra-conservative CED module for graph data processing
-    Minimal enhancement to avoid numerical instability
+    改进的CED模块，科学设计
     """
-    def __init__(self, dim, drop_path=0., **kwargs):
+    def __init__(self, dim, enhancement_ratio=0.1):
         super().__init__()
         
-        # Single linear layer for very subtle enhancement
-        self.enhancement = nn.Linear(dim, dim, bias=False)
+        # 使用更科学的初始化和结构
+        self.norm = nn.LayerNorm(dim)  # 稳定训练
         
-        # Initialize with very small weights
-        nn.init.normal_(self.enhancement.weight, mean=0.0, std=0.001)
+        # 双分支设计：保持+增强
+        self.enhancement_branch = nn.Sequential(
+            nn.Linear(dim, dim // 2),
+            nn.ReLU(),
+            nn.Linear(dim // 2, dim),
+            # nn.Dropout(0.1)  # 注释掉dropout，后续单独测试
+        )
         
-        # Extremely small scaling factor
-        self.alpha = nn.Parameter(torch.tensor(0.001), requires_grad=True)
-
+        # 可学习的混合权重，初始化为较小值
+        self.alpha = nn.Parameter(torch.tensor(enhancement_ratio))
+        
+        # 科学初始化
+        for layer in self.enhancement_branch:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+    
     def forward(self, x):
-        """
-        x: input tensor of shape (N, dim) where N is number of nodes
-        """
-        # Very subtle enhancement
-        enhanced = self.enhancement(x)
+        # 标准化输入
+        normed_x = self.norm(x)
         
-        # Ultra-conservative residual connection
-        output = x + self.alpha * enhanced
+        # 增强分支
+        enhanced = self.enhancement_branch(normed_x)
         
-        return output
+        # 科学的残差连接
+        return x + self.alpha * enhanced
 
 class Encoder_overall_ced_3M(Module):
     def __init__(self, dim_in_feat_omics1, dim_out_feat_omics1, dim_in_feat_omics2, dim_out_feat_omics2, 
@@ -116,7 +124,7 @@ class Encoder_ced(Module):
     - Includes residual connections for better gradient flow
     """
     
-    def __init__(self, in_feat, out_feat, dropout=0.0, act=F.relu, drop_path=0.05):
+    def __init__(self, in_feat, out_feat, dropout=0.0, act=F.relu, ced_ratio=0.1):
         super(Encoder_ced, self).__init__()
         self.in_feat = in_feat
         self.out_feat = out_feat
@@ -126,8 +134,8 @@ class Encoder_ced(Module):
         # Original linear transformation
         self.weight = Parameter(torch.FloatTensor(self.in_feat, self.out_feat))
         
-        # CED module for feature enhancement - Very conservative version
-        self.ced_module = CED_Graph(self.out_feat, drop_path=drop_path)
+        # CED module for feature enhancement - Scientific version
+        self.ced_module = CED_Graph_Improved(self.out_feat, enhancement_ratio=ced_ratio)
         
         self.reset_parameters()
         
@@ -135,16 +143,16 @@ class Encoder_ced(Module):
         torch.nn.init.xavier_uniform_(self.weight)
         
     def forward(self, feat, adj):
-        # Original linear transformation
-        feat_embeding = torch.mm(feat, self.weight)
+        # 1. 线性变换
+        feat_embedding = torch.mm(feat, self.weight)
         
-        # Apply CED feature enhancement (currently identity)
-        feat_embeding_enhanced = self.ced_module(feat_embeding)
+        # 2. 图卷积（核心操作）
+        graph_conv_output = torch.spmm(adj, feat_embedding)
         
-        # Graph convolution with enhanced features
-        x = torch.spmm(adj, feat_embeding_enhanced)
+        # 3. CED增强（后处理）
+        enhanced_output = self.ced_module(graph_conv_output)
         
-        return feat_embeding_enhanced, x
+        return feat_embedding, enhanced_output
     
 class Decoder(Module):
     """
