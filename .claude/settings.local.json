@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:openreview.net)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:arxiv.org)",
+      "Bash(bash run.sh HLN)",
+      "Bash(timeout:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

@@ -46,7 +46,7 @@ class CED_Graph_Improved(nn.Module):
 
 class Encoder_overall_ced_3M(Module):
     def __init__(self, dim_in_feat_omics1, dim_out_feat_omics1, dim_in_feat_omics2, dim_out_feat_omics2, 
-                 dim_in_feat_omics3, dim_out_feat_omics3, dropout=0.0, act=F.relu):
+                 dim_in_feat_omics3, dim_out_feat_omics3, dropout=0.0, act=F.relu, data_type='Simulation'):
         super(Encoder_overall_ced_3M, self).__init__()
         self.dim_in_feat_omics1 = dim_in_feat_omics1
         self.dim_in_feat_omics2 = dim_in_feat_omics2
