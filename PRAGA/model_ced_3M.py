@@ -9,7 +9,7 @@ ls_init_value = 1e-6
 
 class CED_Graph_Improved(nn.Module):
     """
-    改进的CED模块，科学设计
+    改进的CED模块
     """
     def __init__(self, dim, enhancement_ratio=0.1):
         super().__init__()
